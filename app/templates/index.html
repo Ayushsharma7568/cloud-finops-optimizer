@@ -4,9 +4,189 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cloud FinOps Optimizer</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            max-width: 900px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+            color: #1a1a2e;
+            background: #f5f6fa;
+        }
+        h1 { color: #16213e; }
+        h2 { color: #0f3460; margin-top: 2rem; }
+        .error {
+            background: #ffe0e0;
+            border-left: 4px solid #e74c3c;
+            padding: 1rem;
+            margin: 1rem 0;
+        }
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+        .metric-card {
+            background: #fff;
+            border-radius: 8px;
+            padding: 1.2rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .metric-card .label {
+            font-size: 0.85rem;
+            color: #666;
+            margin-bottom: 0.3rem;
+        }
+        .metric-card .value {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #16213e;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+            background: #fff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        th, td { padding: 0.75rem 1rem; text-align: left; }
+        th { background: #16213e; color: #fff; font-weight: 500; }
+        tr:nth-child(even) { background: #f8f9fa; }
+        .badge {
+            display: inline-block;
+            padding: 0.2rem 0.6rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+        .badge-ec2 { background: #fff3cd; color: #856404; }
+        .badge-ebs { background: #d1ecf1; color: #0c5460; }
+        .note {
+            margin-top: 2rem;
+            padding: 0.8rem 1rem;
+            background: #e8f4fd;
+            border-left: 4px solid #3498db;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            color: #2c3e50;
+        }
+    </style>
 </head>
 <body>
     <h1>Cloud FinOps Optimizer</h1>
-    <p>Application is running.</p>
+
+    {% if error %}
+    <div class="error">
+        <strong>Error loading data:</strong> {{ error }}
+    </div>
+    {% endif %}
+
+    {% if summary %}
+    <h2>Cost Overview</h2>
+    <div class="metrics-grid">
+        <div class="metric-card">
+            <div class="label">Total Monthly Cost</div>
+            <div class="value">${{ "%.2f"|format(summary.costs.total) }}</div>
+        </div>
+        <div class="metric-card">
+            <div class="label">EC2 Cost</div>
+            <div class="value">${{ "%.2f"|format(summary.costs.ec2) }}</div>
+        </div>
+        <div class="metric-card">
+            <div class="label">EBS Cost</div>
+            <div class="value">${{ "%.2f"|format(summary.costs.ebs) }}</div>
+        </div>
+        <div class="metric-card">
+            <div class="label">S3 Cost</div>
+            <div class="value">${{ "%.2f"|format(summary.costs.s3) }}</div>
+        </div>
+    </div>
+
+    <h2>Resources</h2>
+    <div class="metrics-grid">
+        <div class="metric-card">
+            <div class="label">Total Resources</div>
+            <div class="value">{{ summary.total_resources }}</div>
+        </div>
+        {% for service, count in summary.resource_counts.items() %}
+        <div class="metric-card">
+            <div class="label">{{ service|upper }} Resources</div>
+            <div class="value">{{ count }}</div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <h2>EC2 Utilization (Running Instances)</h2>
+    <div class="metrics-grid">
+        <div class="metric-card">
+            <div class="label">Avg CPU Utilization</div>
+            <div class="value">{{ summary.ec2_utilization.avg_cpu }}%</div>
+        </div>
+        <div class="metric-card">
+            <div class="label">Avg Memory Utilization</div>
+            <div class="value">{{ summary.ec2_utilization.avg_memory }}%</div>
+        </div>
+        {% for status, count in summary.ec2_status.items() %}
+        <div class="metric-card">
+            <div class="label">{{ status|capitalize }} Instances</div>
+            <div class="value">{{ count }}</div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <h2>EBS Storage</h2>
+    <div class="metrics-grid">
+        <div class="metric-card">
+            <div class="label">Allocated Storage</div>
+            <div class="value">{{ summary.ebs_utilization.total_allocated_gb }} GB</div>
+        </div>
+        <div class="metric-card">
+            <div class="label">Used Storage</div>
+            <div class="value">{{ summary.ebs_utilization.total_used_gb }} GB</div>
+        </div>
+        <div class="metric-card">
+            <div class="label">Storage Utilization</div>
+            <div class="value">{{ summary.ebs_utilization.utilization_pct }}%</div>
+        </div>
+    </div>
+
+    {% if summary.underutilized_resources %}
+    <h2>Potentially Underutilized Resources</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Resource ID</th>
+                <th>Type</th>
+                <th>Reason</th>
+                <th>Monthly Cost</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in summary.underutilized_resources %}
+            <tr>
+                <td>{{ item.resource_id }}</td>
+                <td>
+                    <span class="badge badge-{{ item.resource_type|lower }}">
+                        {{ item.resource_type }}
+                    </span>
+                </td>
+                <td>{{ item.reason }}</td>
+                <td>${{ "%.2f"|format(item.monthly_cost) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>No underutilized resources detected.</p>
+    {% endif %}
+
+    <div class="note">
+        <strong>Note:</strong> This analysis uses sample/mock data.
+        Real AWS integration will be available in a future phase.
+    </div>
+    {% endif %}
 </body>
 </html>

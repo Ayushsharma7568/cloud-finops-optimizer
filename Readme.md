@@ -1,117 +1,100 @@
 # Cloud FinOps + Intelligent Resource Optimization
 
-A cloud cost optimization platform that analyzes cloud resource usage, identifies potential waste, estimates cost savings, and provides optimization recommendations with the help of AI.
-
-## Project Overview
-
-Cloud infrastructure can become expensive when resources are over-provisioned, underutilized, or left running unnecessarily.
-
-This project aims to build a lightweight FinOps platform that helps identify these inefficiencies and provides actionable recommendations to reduce cloud costs.
-
-## Objectives
-
-* Monitor cloud resource usage and costs
-* Analyze resource utilization
-* Detect potentially wasted or underutilized resources
-* Calculate estimated cost savings
-* Generate optimization recommendations
-* Provide an interactive dashboard
-* Use AI to explain optimization opportunities
-* Integrate with AWS cloud resources
-* Containerize and deploy the application
-
-## Initial Scope
-
-The initial version will focus on:
-
-* AWS
-* EC2
-* EBS
-* S3
-* Cost analysis
-* Resource utilization analysis
-* Waste detection
-* Optimization recommendations
-* Estimated savings
-
-## Planned Technology Stack
-
-* **Backend:** Python, Flask
-* **Database:** SQLite, SQLAlchemy
-* **Cloud:** AWS
-* **AWS SDK:** Boto3
-* **Frontend:** HTML, CSS, JavaScript
-* **Charts:** Chart.js
-* **AI:** LLM API
-* **Containerization:** Docker
-* **Testing:** Pytest
-* **Version Control:** Git, GitHub
-
-## Planned Architecture
-
-```text
-AWS Cloud
-    |
-    v
-Data Collection
-    |
-    v
-Cost & Resource Analysis
-    |
-    v
-Waste Detection
-    |
-    v
-Optimization Engine
-    |
-    +------> AI Recommendation Layer
-    |
-    v
-Flask Backend
-    |
-    v
-Dashboard
-```
-
-## Development Approach
-
-The project will be developed incrementally.
-
-1. Set up the development environment
-2. Build the Flask backend
-3. Create the database
-4. Add sample cloud data
-5. Build the cost analysis engine
-6. Build resource utilization analysis
-7. Detect optimization opportunities
-8. Calculate estimated savings
-9. Build the dashboard
-10. Add AI-assisted recommendations
-11. Integrate AWS
-12. Dockerize the application
-13. Test and deploy
+A cloud cost optimization platform that analyzes cloud resource usage, identifies potential waste, estimates cost savings, and provides optimization recommendations.
 
 ## Project Status
 
-**Status:** 🚧 In Development
+**Status:** 🚧 In Development — Phase 1 Complete
 
-The project is currently in the initial setup phase.
+Phase 1 delivers mock-data analysis with basic FinOps metrics and waste detection.
 
-## Future Improvements
+## Quick Start
 
-Possible future extensions include:
+```bash
+# Create and activate virtual environment
+python -m venv venv
+venv\Scripts\activate        # Windows
+source venv/bin/activate     # macOS/Linux
 
-* Support for additional AWS services
-* Automated cost reports
-* Cloud cost forecasting
-* Budget alerts
-* Advanced optimization recommendations
-* Infrastructure-as-Code integration
-* Multi-cloud support
-* Automated optimization with human approval
+# Install dependencies
+pip install -r requirements.txt
+
+# Run the application
+python run.py
+```
+
+Visit [http://127.0.0.1:5000/](http://127.0.0.1:5000/) to view the dashboard.
+
+## Run Tests
+
+```bash
+python -m pytest tests/ -v
+```
+
+## Current Features (Phase 1)
+
+* Mock cloud resource data (EC2, EBS, S3)
+* CSV-based data loading with validation
+* Cost breakdown by service
+* EC2 CPU and memory utilization analysis
+* EBS storage utilization analysis
+* Underutilization and waste detection with configurable thresholds
+* Simple web dashboard displaying all metrics
+
+## Architecture
+
+```text
+data/                     Mock CSV datasets
+  ├── ec2_resources.csv
+  ├── ebs_volumes.csv
+  └── s3_buckets.csv
+
+app/
+  ├── __init__.py          Flask app factory
+  ├── routes.py            HTTP route definitions
+  ├── models.py            (placeholder — database not yet integrated)
+  ├── services/
+  │   ├── data_loader.py   CSV loading and validation
+  │   └── cost_analysis.py Resource, cost, and utilization analysis
+  └── templates/
+      └── index.html       Dashboard template
+
+config.py                  App configuration and analysis thresholds
+run.py                     Application entry point
+```
+
+**Data flow:**
+
+```
+CSV Files → data_loader → cost_analysis → Flask route → Template
+```
+
+Routes call services; services contain business logic; templates handle presentation.
+
+## Technology Stack
+
+* **Backend:** Python, Flask
+* **Data:** CSV (mock data — AWS integration planned)
+* **Frontend:** HTML, CSS (minimal dashboard)
+* **Testing:** pytest
+
+## Planned Phases
+
+| Phase | Description | Status |
+|-------|-------------|--------|
+| 0 | Project setup and Flask foundation | ✅ Complete |
+| 1 | Mock data, analysis, and metrics dashboard | ✅ Complete |
+| 2 | Database integration and API endpoints | 🔜 Planned |
+| 3 | AWS integration with boto3 | 🔜 Planned |
+| 4 | AI-powered optimization recommendations | 🔜 Planned |
+| 5 | Advanced dashboard with charts | 🔜 Planned |
+
+## Important Notes
+
+* All current data is **mock/sample data** — not from a real AWS account.
+* Analysis thresholds are configurable in `config.py` (`AnalysisThresholds` class).
+* Real AWS integration will be implemented in Phase 3.
 
 ## Author
 
 **Ayush Sharma**
-
-
