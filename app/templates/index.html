@@ -7,7 +7,7 @@
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            max-width: 900px;
+            max-width: 960px;
             margin: 2rem auto;
             padding: 0 1rem;
             color: #1a1a2e;
@@ -43,6 +43,7 @@
             font-weight: 600;
             color: #16213e;
         }
+        .metric-card.savings .value { color: #27ae60; }
         table {
             width: 100%;
             border-collapse: collapse;
@@ -52,18 +53,21 @@
             overflow: hidden;
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
-        th, td { padding: 0.75rem 1rem; text-align: left; }
+        th, td { padding: 0.65rem 0.8rem; text-align: left; font-size: 0.9rem; }
         th { background: #16213e; color: #fff; font-weight: 500; }
         tr:nth-child(even) { background: #f8f9fa; }
         .badge {
             display: inline-block;
             padding: 0.2rem 0.6rem;
             border-radius: 4px;
-            font-size: 0.8rem;
+            font-size: 0.78rem;
             font-weight: 500;
         }
-        .badge-ec2 { background: #fff3cd; color: #856404; }
-        .badge-ebs { background: #d1ecf1; color: #0c5460; }
+        .badge-high   { background: #fde2e2; color: #c0392b; }
+        .badge-medium { background: #fff3cd; color: #856404; }
+        .badge-low    { background: #d4edda; color: #155724; }
+        .badge-ec2    { background: #fff3cd; color: #856404; }
+        .badge-ebs    { background: #d1ecf1; color: #0c5460; }
         .note {
             margin-top: 2rem;
             padding: 0.8rem 1rem;
@@ -73,6 +77,7 @@
             font-size: 0.9rem;
             color: #2c3e50;
         }
+        hr { border: none; border-top: 2px solid #e0e0e0; margin: 2.5rem 0; }
     </style>
 </head>
 <body>
@@ -84,6 +89,7 @@
     </div>
     {% endif %}
 
+    {# ── Phase 1: Resource & Cost Overview ── #}
     {% if summary %}
     <h2>Cost Overview</h2>
     <div class="metrics-grid">
@@ -152,41 +158,92 @@
             <div class="value">{{ summary.ebs_utilization.utilization_pct }}%</div>
         </div>
     </div>
+    {% endif %}
 
-    {% if summary.underutilized_resources %}
-    <h2>Potentially Underutilized Resources</h2>
+    {# ── Phase 2: Optimization Opportunities ── #}
+    {% if optimization %}
+    <hr>
+    <h2>Optimization Overview</h2>
+    <div class="metrics-grid">
+        <div class="metric-card savings">
+            <div class="label">Potential Monthly Savings</div>
+            <div class="value">${{ "%.2f"|format(optimization.total_monthly_savings) }}</div>
+        </div>
+        <div class="metric-card savings">
+            <div class="label">Potential Annual Savings</div>
+            <div class="value">${{ "%.2f"|format(optimization.total_annual_savings) }}</div>
+        </div>
+        <div class="metric-card">
+            <div class="label">Optimization Opportunities</div>
+            <div class="value">{{ optimization.total_opportunities }}</div>
+        </div>
+        <div class="metric-card">
+            <div class="label">High Priority</div>
+            <div class="value">{{ optimization.high_severity_count }}</div>
+        </div>
+        <div class="metric-card savings">
+            <div class="label">Potential Savings</div>
+            <div class="value">{{ optimization.savings_percentage }}%</div>
+        </div>
+    </div>
+
+    {% if optimization.savings_by_service %}
+    <h2>Savings by Service</h2>
+    <div class="metrics-grid">
+        {% for service, amount in optimization.savings_by_service.items() %}
+        <div class="metric-card savings">
+            <div class="label">{{ service }} Savings</div>
+            <div class="value">${{ "%.2f"|format(amount) }}</div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if optimization.findings %}
+    <h2>Optimization Findings</h2>
     <table>
         <thead>
             <tr>
-                <th>Resource ID</th>
+                <th>Resource</th>
                 <th>Type</th>
-                <th>Reason</th>
-                <th>Monthly Cost</th>
+                <th>Issue</th>
+                <th>Severity</th>
+                <th>Current Cost</th>
+                <th>Recommended Action</th>
+                <th>Est. Savings/mo</th>
             </tr>
         </thead>
         <tbody>
-            {% for item in summary.underutilized_resources %}
+            {% for f in optimization.findings %}
             <tr>
-                <td>{{ item.resource_id }}</td>
+                <td>{{ f.resource_id }}</td>
                 <td>
-                    <span class="badge badge-{{ item.resource_type|lower }}">
-                        {{ item.resource_type }}
+                    <span class="badge badge-{{ f.resource_type|lower }}">
+                        {{ f.resource_type }}
                     </span>
                 </td>
-                <td>{{ item.reason }}</td>
-                <td>${{ "%.2f"|format(item.monthly_cost) }}</td>
+                <td>{{ f.reason }}</td>
+                <td>
+                    <span class="badge badge-{{ f.severity|lower }}">
+                        {{ f.severity }}
+                    </span>
+                </td>
+                <td>${{ "%.2f"|format(f.current_monthly_cost) }}</td>
+                <td>{{ f.recommended_action }}</td>
+                <td>${{ "%.2f"|format(f.estimated_monthly_savings) }}</td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
     {% else %}
-    <p>No underutilized resources detected.</p>
+    <p>No optimization opportunities detected.</p>
+    {% endif %}
     {% endif %}
 
     <div class="note">
-        <strong>Note:</strong> This analysis uses sample/mock data.
-        Real AWS integration will be available in a future phase.
+        <strong>Note:</strong> This analysis uses sample/mock data with estimated pricing.
+        Savings are approximate and based on simplified assumptions.
+        Real AWS integration and pricing will be available in a future phase.
     </div>
-    {% endif %}
 </body>
 </html>
