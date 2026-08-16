@@ -1,0 +1,9 @@
+volume_id,volume_type,region,size_gb,used_gb,monthly_cost,status
+vol-0a1b2c3d4e5f00001,gp3,us-east-1,100,82,8.00,in-use
+vol-0a1b2c3d4e5f00002,gp3,us-east-1,500,45,40.00,in-use
+vol-0a1b2c3d4e5f00003,io1,us-west-2,200,185,25.00,in-use
+vol-0a1b2c3d4e5f00004,gp2,us-west-2,1000,120,100.00,in-use
+vol-0a1b2c3d4e5f00005,gp3,eu-west-1,50,48,4.00,in-use
+vol-0a1b2c3d4e5f00006,st1,us-east-1,2000,150,90.00,in-use
+vol-0a1b2c3d4e5f00007,gp3,us-east-1,200,10,16.00,available
+vol-0a1b2c3d4e5f00008,gp2,eu-west-1,100,72,10.00,in-use

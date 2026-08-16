@@ -1,0 +1,7 @@
+bucket_name,region,storage_gb,monthly_cost
+finops-app-assets,us-east-1,250.0,5.75
+finops-data-lake,us-east-1,1200.0,27.60
+finops-logs-archive,us-west-2,3500.0,80.50
+finops-backups,us-west-2,800.0,18.40
+finops-static-site,eu-west-1,5.0,0.12
+finops-ml-datasets,us-east-1,600.0,13.80
