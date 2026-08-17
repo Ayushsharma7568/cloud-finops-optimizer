@@ -4,9 +4,9 @@ A cloud cost optimization platform that analyzes cloud resource usage, identifie
 
 ## Project Status
 
-**Status:** 🚧 In Development — Phase 2 Complete
+**Status:** 🚧 In Development — Phase 3 Complete
 
-Phase 2 builds upon the initial architecture to provide an intelligent Waste Detection Engine and Mock Savings Estimator.
+Phase 3 introduces an intelligent Recommendation Engine that transforms waste findings into clear, explainable, and prioritized actions.
 
 ## Quick Start
 
@@ -31,15 +31,18 @@ Visit [http://127.0.0.1:5000/](http://127.0.0.1:5000/) to view the dashboard.
 python -m pytest tests/ -v
 ```
 
-## Current Features (Phase 2)
+## Current Features (Phase 3)
 
 * **Waste Detection Engine**: Identifies underutilized and idle resources.
-  * EC2: Underutilized CPU/Memory, Stopped instances.
-  * EBS: Underutilized storage, Unattached volumes.
-* **Intelligent Severity**: Automatically categorizes findings into HIGH, MEDIUM, or LOW severity based on potential cost impact.
+* **Recommendation Engine**: Transforms technical waste findings into clear, actionable recommendations.
+  * Standardized Action Categories (e.g., DOWNSIZE, REVIEW_AND_TERMINATE).
+  * Explainable reasoning for each recommendation.
+* **Intelligent Scoring**: 
+  * **Severity**: Calculates potential cost impact (HIGH, MEDIUM, LOW).
+  * **Confidence**: Evaluates certainty of the recommendation based on data availability.
+* **Prioritization**: Automatically ranks recommendations by severity and maximum potential savings.
 * **Savings Estimator**: Calculates estimated monthly and annual savings using mock pricing assumptions.
-* **Optimization Summary**: Aggregates total potential savings, opportunity counts, and savings percentage.
-* **Dashboard**: Clean UI displaying both the core cost metrics (Phase 1) and actionable optimization recommendations (Phase 2).
+* **Dashboard**: Clean UI displaying cost metrics, a top recommendation highlight, and a prioritized action table.
 * **Mock Datasets**: Realistic mock cloud resource data (EC2, EBS, S3) loaded from CSV.
 
 ## Architecture
@@ -54,10 +57,11 @@ app/
   ├── __init__.py          Flask app factory
   ├── routes.py            HTTP route definitions (Orchestrator)
   ├── services/
-  │   ├── data_loader.py       CSV loading and validation
-  │   ├── cost_analysis.py     Resource, cost, and utilization analysis
-  │   ├── waste_detector.py    Rule-based optimization opportunity detection
-  │   └── savings_calculator.py Savings aggregation and metrics
+  │   ├── data_loader.py            CSV loading and validation
+  │   ├── cost_analysis.py          Resource, cost, and utilization analysis
+  │   ├── waste_detector.py         Rule-based optimization opportunity detection
+  │   ├── recommendation_engine.py  Actionable recommendations and prioritization
+  │   └── savings_calculator.py      Savings aggregation and metrics
   └── templates/
       └── index.html       Dashboard template
 
@@ -68,7 +72,7 @@ run.py                     Application entry point
 **Data flow:**
 
 ```
-CSV Files → data_loader → cost_analysis → waste_detector → savings_calculator → Route → Template
+CSV Files → data_loader → cost_analysis → waste_detector → recommendation_engine → savings_calculator → Route → Template
 ```
 
 ## Technology Stack
@@ -76,7 +80,7 @@ CSV Files → data_loader → cost_analysis → waste_detector → savings_calcu
 * **Backend:** Python, Flask
 * **Data:** CSV (mock data)
 * **Frontend:** HTML, Vanilla CSS
-* **Testing:** pytest (71 tests covering data loading, analysis, waste detection, and savings)
+* **Testing:** pytest (82 tests covering data loading, analysis, waste detection, recommendations, and savings)
 
 ## Planned Phases
 
@@ -85,10 +89,11 @@ CSV Files → data_loader → cost_analysis → waste_detector → savings_calcu
 | 0 | Project setup and Flask foundation | ✅ Complete |
 | 1 | Mock data, analysis, and metrics dashboard | ✅ Complete |
 | 2 | Waste detection, mock savings, optimization summary | ✅ Complete |
-| 3 | AWS API integration (boto3) | 🔜 Planned |
-| 4 | Database integration and models | 🔜 Planned |
-| 5 | AI-powered optimization recommendations | 🔜 Planned |
-| 6 | Advanced dashboard with dynamic charts | 🔜 Planned |
+| 3 | Recommendation engine, prioritization, and UI | ✅ Complete |
+| 4 | AWS API integration (boto3) | 🔜 Planned |
+| 5 | Database integration and models | 🔜 Planned |
+| 6 | AI-powered optimization recommendations | 🔜 Planned |
+| 7 | Advanced dashboard with dynamic charts | 🔜 Planned |
 
 ## Important Notes & Limitations
 

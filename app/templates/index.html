@@ -160,32 +160,50 @@
     </div>
     {% endif %}
 
-    {# ── Phase 2: Optimization Opportunities ── #}
+    {# ── Phase 3: Recommendations ── #}
     {% if optimization %}
     <hr>
     <h2>Optimization Overview</h2>
     <div class="metrics-grid">
         <div class="metric-card savings">
-            <div class="label">Potential Monthly Savings</div>
+            <div class="label">Total Potential Monthly Savings</div>
             <div class="value">${{ "%.2f"|format(optimization.total_monthly_savings) }}</div>
         </div>
         <div class="metric-card savings">
-            <div class="label">Potential Annual Savings</div>
+            <div class="label">Total Potential Annual Savings</div>
             <div class="value">${{ "%.2f"|format(optimization.total_annual_savings) }}</div>
         </div>
         <div class="metric-card">
-            <div class="label">Optimization Opportunities</div>
+            <div class="label">Total Recommendations</div>
             <div class="value">{{ optimization.total_opportunities }}</div>
         </div>
         <div class="metric-card">
             <div class="label">High Priority</div>
             <div class="value">{{ optimization.high_severity_count }}</div>
         </div>
+        <div class="metric-card">
+            <div class="label">Medium Priority</div>
+            <div class="value">{{ optimization.medium_severity_count }}</div>
+        </div>
+        <div class="metric-card">
+            <div class="label">Low Priority</div>
+            <div class="value">{{ optimization.low_severity_count }}</div>
+        </div>
         <div class="metric-card savings">
             <div class="label">Potential Savings</div>
             <div class="value">{{ optimization.savings_percentage }}%</div>
         </div>
     </div>
+
+    {% if optimization.top_recommendation %}
+    <h2>Top Recommendation</h2>
+    <div class="metric-card" style="margin-bottom: 2rem; border-left: 4px solid #f39c12;">
+        <h3 style="margin-top: 0; color: #16213e;">{{ optimization.top_recommendation.resource_id }} <span class="badge badge-high" style="margin-left: 0.5rem;">${{ "%.2f"|format(optimization.top_recommendation.estimated_monthly_savings) }}/mo Savings</span></h3>
+        <p><strong>Action:</strong> {{ optimization.top_recommendation.action_category }}</p>
+        <p><strong>Reason:</strong> {{ optimization.top_recommendation.reason }}</p>
+        <p><strong>Recommendation:</strong> {{ optimization.top_recommendation.recommendation }}</p>
+    </div>
+    {% endif %}
 
     {% if optimization.savings_by_service %}
     <h2>Savings by Service</h2>
@@ -199,51 +217,64 @@
     </div>
     {% endif %}
 
+    {% if optimization.action_counts %}
+    <h2>Recommendations by Action Category</h2>
+    <div class="metrics-grid">
+        {% for action, count in optimization.action_counts.items() %}
+        <div class="metric-card">
+            <div class="label">{{ action }}</div>
+            <div class="value">{{ count }}</div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
     {% if optimization.findings %}
-    <h2>Optimization Findings</h2>
+    <h2>Recommended Actions</h2>
     <table>
         <thead>
             <tr>
                 <th>Resource</th>
-                <th>Type</th>
                 <th>Issue</th>
                 <th>Severity</th>
-                <th>Current Cost</th>
-                <th>Recommended Action</th>
+                <th>Confidence</th>
+                <th>Recommendation</th>
+                <th>Action</th>
                 <th>Est. Savings/mo</th>
+                <th>Est. Savings/yr</th>
             </tr>
         </thead>
         <tbody>
             {% for f in optimization.findings %}
             <tr>
-                <td>{{ f.resource_id }}</td>
-                <td>
-                    <span class="badge badge-{{ f.resource_type|lower }}">
-                        {{ f.resource_type }}
-                    </span>
-                </td>
+                <td><strong>{{ f.resource_id }}</strong><br><span class="badge badge-{{ f.resource_type|lower }}">{{ f.resource_type }}</span></td>
                 <td>{{ f.reason }}</td>
                 <td>
                     <span class="badge badge-{{ f.severity|lower }}">
                         {{ f.severity }}
                     </span>
                 </td>
-                <td>${{ "%.2f"|format(f.current_monthly_cost) }}</td>
-                <td>{{ f.recommended_action }}</td>
-                <td>${{ "%.2f"|format(f.estimated_monthly_savings) }}</td>
+                <td>
+                    <span class="badge badge-{{ f.confidence|lower }}">
+                        {{ f.confidence }}
+                    </span>
+                </td>
+                <td>{{ f.recommendation }}</td>
+                <td><strong>{{ f.action_category }}</strong></td>
+                <td style="color: #27ae60; font-weight: 600;">${{ "%.2f"|format(f.estimated_monthly_savings) }}</td>
+                <td style="color: #27ae60;">${{ "%.2f"|format(f.estimated_annual_savings) }}</td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
     {% else %}
-    <p>No optimization opportunities detected.</p>
+    <p>No optimization recommendations currently available.</p>
     {% endif %}
     {% endif %}
 
     <div class="note">
-        <strong>Note:</strong> This analysis uses sample/mock data with estimated pricing.
-        Savings are approximate and based on simplified assumptions.
-        Real AWS integration and pricing will be available in a future phase.
+        <strong>Important Disclaimer:</strong> These recommendations are based entirely on static mock data and simplified pricing assumptions. 
+        Savings are estimates. These are strictly recommendations and do not represent automatic actions. No cloud resources are actually modified.
     </div>
 </body>
 </html>
