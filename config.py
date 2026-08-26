@@ -12,6 +12,8 @@ class Config:
     """Base configuration."""
 
     SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key")
+    SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL", "sqlite:///:memory:")
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     # Path to mock data directory
     DATA_DIR = BASE_DIR / "data"
