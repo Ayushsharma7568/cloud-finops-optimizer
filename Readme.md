@@ -4,9 +4,9 @@ A cloud cost optimization platform that analyzes cloud resource usage, identifie
 
 ## Project Status
 
-**Status:** 🚧 In Development — Phase 3 Complete
+**Status:** 🚧 In Development — Phase 4 Complete
 
-Phase 3 introduces an intelligent Recommendation Engine that transforms waste findings into clear, explainable, and prioritized actions.
+Phase 4 introduces a PostgreSQL persistence layer, allowing findings and analysis runs to be stored safely in a database instead of residing entirely in memory.
 
 ## Quick Start
 
@@ -18,6 +18,17 @@ source venv/bin/activate     # macOS/Linux
 
 # Install dependencies
 pip install -r requirements.txt
+
+# Configure Database
+# 1. Copy .env.example to .env
+# 2. Update DATABASE_URL in .env to point to your PostgreSQL instance
+# example: DATABASE_URL=postgresql+psycopg://username:password@localhost:5432/cloud_finops
+
+# Run Database Migrations
+flask db upgrade
+
+# Seed Database with Mock CSV Data
+python scripts/seed_data.py
 
 # Run the application
 python run.py
@@ -31,39 +42,34 @@ Visit [http://127.0.0.1:5000/](http://127.0.0.1:5000/) to view the dashboard.
 python -m pytest tests/ -v
 ```
 
-## Current Features (Phase 3)
+## Current Features (Phase 4)
 
+* **PostgreSQL Database Integration**: Persistent storage of cloud resources, metrics, costs, analysis runs, findings, and recommendations.
+* **Database Repositories**: Clean separation between database querying and the core business logic.
 * **Waste Detection Engine**: Identifies underutilized and idle resources.
 * **Recommendation Engine**: Transforms technical waste findings into clear, actionable recommendations.
-  * Standardized Action Categories (e.g., DOWNSIZE, REVIEW_AND_TERMINATE).
-  * Explainable reasoning for each recommendation.
-* **Intelligent Scoring**: 
-  * **Severity**: Calculates potential cost impact (HIGH, MEDIUM, LOW).
-  * **Confidence**: Evaluates certainty of the recommendation based on data availability.
-* **Prioritization**: Automatically ranks recommendations by severity and maximum potential savings.
-* **Savings Estimator**: Calculates estimated monthly and annual savings using mock pricing assumptions.
-* **Dashboard**: Clean UI displaying cost metrics, a top recommendation highlight, and a prioritized action table.
-* **Mock Datasets**: Realistic mock cloud resource data (EC2, EBS, S3) loaded from CSV.
+* **Dashboard**: Displays real-time database-backed results.
 
 ## Architecture
 
 ```text
 data/                     Mock CSV datasets
-  ├── ec2_resources.csv
-  ├── ebs_volumes.csv
-  └── s3_buckets.csv
-
+scripts/                  
+  └── seed_data.py        Import script to migrate CSV to PostgreSQL
 app/
-  ├── __init__.py          Flask app factory
-  ├── routes.py            HTTP route definitions (Orchestrator)
+  ├── __init__.py         Flask app factory
+  ├── models.py           SQLAlchemy database schema definitions
+  ├── extensions.py       Database extension configurations
+  ├── repositories/       Data Access layer separating DB from services
+  ├── routes.py           HTTP route definitions (Orchestrator)
   ├── services/
-  │   ├── data_loader.py            CSV loading and validation
-  │   ├── cost_analysis.py          Resource, cost, and utilization analysis
-  │   ├── waste_detector.py         Rule-based optimization opportunity detection
-  │   ├── recommendation_engine.py  Actionable recommendations and prioritization
-  │   └── savings_calculator.py      Savings aggregation and metrics
+  │   ├── db_loader.py    Loads repository DB objects to business dictionaries
+  │   ├── cost_analysis.py
+  │   ├── waste_detector.py
+  │   ├── recommendation_engine.py
+  │   └── savings_calculator.py
   └── templates/
-      └── index.html       Dashboard template
+      └── index.html
 
 config.py                  App configuration, thresholds, and mock pricing
 run.py                     Application entry point
@@ -72,15 +78,15 @@ run.py                     Application entry point
 **Data flow:**
 
 ```
-CSV Files → data_loader → cost_analysis → waste_detector → recommendation_engine → savings_calculator → Route → Template
+PostgreSQL → SQLAlchemy → Repository → db_loader → FinOps Engine (Analysis, Waste, Recommendation) → Repository (Persist findings) → Dashboard Template
 ```
 
 ## Technology Stack
 
-* **Backend:** Python, Flask
-* **Data:** CSV (mock data)
-* **Frontend:** HTML, Vanilla CSS
-* **Testing:** pytest (82 tests covering data loading, analysis, waste detection, recommendations, and savings)
+* **Backend:** Python, Flask, SQLAlchemy, Flask-Migrate, psycopg
+* **Database:** PostgreSQL
+* **Data:** CSV (initial seed mock data)
+* **Testing:** pytest (87+ tests covering DB lifecycle, pipeline, and engines)
 
 ## Planned Phases
 
@@ -90,8 +96,8 @@ CSV Files → data_loader → cost_analysis → waste_detector → recommendatio
 | 1 | Mock data, analysis, and metrics dashboard | ✅ Complete |
 | 2 | Waste detection, mock savings, optimization summary | ✅ Complete |
 | 3 | Recommendation engine, prioritization, and UI | ✅ Complete |
-| 4 | AWS API integration (boto3) | 🔜 Planned |
-| 5 | Database integration and models | 🔜 Planned |
+| 4 | Database integration and models | ✅ Complete |
+| 5 | AWS API integration (boto3) | 🔜 Planned |
 | 6 | AI-powered optimization recommendations | 🔜 Planned |
 | 7 | Advanced dashboard with dynamic charts | 🔜 Planned |
 
