@@ -4,11 +4,13 @@ from app.extensions import db
 from app.repositories.resource_repository import ResourceRepository
 from app.repositories.analysis_repository import AnalysisRepository
 
+import os
+
 @pytest.fixture
 def app():
     """Create a Flask app with an in-memory SQLite DB for testing."""
+    os.environ['DATABASE_URL'] = 'sqlite:///:memory:'
     app = create_app()
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
     app.config['TESTING'] = True
     
     with app.app_context():

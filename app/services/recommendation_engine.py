@@ -52,6 +52,7 @@ class Recommendation:
     estimated_optimized_monthly_cost: float | None = None
     estimated_monthly_savings: float = 0.0
     estimated_annual_savings: float = 0.0
+    priority: int = 0
 
     def to_dict(self) -> dict:
         """Convert to a plain dict for template rendering."""
@@ -68,6 +69,7 @@ class Recommendation:
             "estimated_optimized_monthly_cost": self.estimated_optimized_monthly_cost,
             "estimated_monthly_savings": self.estimated_monthly_savings,
             "estimated_annual_savings": self.estimated_annual_savings,
+            "priority": self.priority,
         }
 
 
@@ -166,7 +168,7 @@ def _generate_ebs_unattached(finding: OptimizationFinding) -> Recommendation:
 # ---------------------------------------------------------------------------
 
 def prioritize_recommendations(recommendations: list[Recommendation]) -> list[Recommendation]:
-    """Sort recommendations by impact.
+    """Sort recommendations by impact and assign priority sequence.
     
     1. HIGH before MEDIUM before LOW severity.
     2. Higher estimated monthly savings first.
@@ -177,6 +179,11 @@ def prioritize_recommendations(recommendations: list[Recommendation]) -> list[Re
     recommendations.sort(
         key=lambda r: (severity_order[r.severity], -r.estimated_monthly_savings)
     )
+    
+    # Assign priority sequence (1 is highest priority)
+    for i, rec in enumerate(recommendations, start=1):
+        rec.priority = i
+        
     return recommendations
 
 

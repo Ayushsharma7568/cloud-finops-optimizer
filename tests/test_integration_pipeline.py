@@ -7,11 +7,13 @@ from app.services.cost_analysis import generate_summary
 from app.services.waste_detector import detect_findings
 from app.services.recommendation_engine import generate_recommendations
 
+import os
+
 @pytest.fixture
 def app():
     """Create a Flask app with an in-memory SQLite DB for testing."""
+    os.environ['DATABASE_URL'] = 'sqlite:///:memory:'
     app = create_app()
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
     app.config['TESTING'] = True
     
     with app.app_context():
