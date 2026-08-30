@@ -59,7 +59,7 @@ def register_routes(app):
             # 5. Complete Analysis Run
             AnalysisRepository.complete_analysis_run(
                 run_id=run.id,
-                resource_count=summary["resources"]["total"],
+                resource_count=summary["total_resources"],
                 total_cost=summary["costs"]["total"],
                 potential_savings=optimization["total_savings"]
             )

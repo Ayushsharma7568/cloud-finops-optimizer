@@ -2,10 +2,12 @@ from flask import Flask
 from config import Config
 
 
-def create_app():
+def create_app(test_config=None):
     """Application factory for the Flask app."""
     app = Flask(__name__)
     app.config.from_object(Config)
+    if test_config:
+        app.config.update(test_config)
 
     # Initialize extensions
     from app.extensions import db, migrate
