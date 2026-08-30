@@ -61,7 +61,7 @@ def register_routes(app):
                 run_id=run.id,
                 resource_count=summary["total_resources"],
                 total_cost=summary["costs"]["total"],
-                potential_savings=optimization["total_savings"]
+                potential_savings=optimization["total_monthly_savings"]
             )
 
             error = None
