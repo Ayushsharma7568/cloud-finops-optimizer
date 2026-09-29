@@ -80,9 +80,12 @@ def _ingest_resource(normalized_aws_data: dict):
             cw_service = CloudWatchService()
             cpu_data = cw_service.get_ec2_cpu_utilization(resource_id)
             if cpu_data.get("average_cpu") is not None:
+                # Map CloudWatch name to our internal name required by WasteDetector
+                internal_metric_name = "cpu_utilization" if cpu_data["metric_name"] == "CPUUtilization" else cpu_data["metric_name"]
+                
                 ResourceRepository.upsert_metric(
                     resource_db_id=db_resource.id,
-                    metric_name=cpu_data["metric_name"],
+                    metric_name=internal_metric_name,
                     metric_value=float(cpu_data["average_cpu"])
                 )
         except Exception as e:
