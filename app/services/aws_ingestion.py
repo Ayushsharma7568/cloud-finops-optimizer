@@ -7,6 +7,7 @@ database layer using the Repository pattern.
 import logging
 from app.services.aws_ec2_discovery import discover_ec2_instances
 from app.services.aws_ebs_discovery import discover_ebs_volumes
+from app.services.aws_cloudwatch import CloudWatchService
 from app.repositories.resource_repository import ResourceRepository
 
 logger = logging.getLogger(__name__)
@@ -73,12 +74,19 @@ def _ingest_resource(normalized_aws_data: dict):
     )
     
     # Optionally store useful AWS metadata as metrics.
-    # In Phase 5.4 we just ensure the foundation works. We can track instance_type or size as metrics.
     if resource_type == "ec2_instance":
-        if "instance_type" in metadata:
-            # Storing as string metric value isn't supported by float metric_value natively.
-            # For now, we skip string metrics to avoid changing schema.
-            pass
+        # Fetch CloudWatch CPU utilization
+        try:
+            cw_service = CloudWatchService()
+            cpu_data = cw_service.get_ec2_cpu_utilization(resource_id)
+            if cpu_data.get("average_cpu") is not None:
+                ResourceRepository.upsert_metric(
+                    resource_db_id=db_resource.id,
+                    metric_name=cpu_data["metric_name"],
+                    metric_value=float(cpu_data["average_cpu"])
+                )
+        except Exception as e:
+            logger.error(f"Failed to fetch CloudWatch metrics for {resource_id}: {e}")
             
     elif resource_type == "ebs_volume":
         if "size_gb" in metadata and metadata["size_gb"] is not None:

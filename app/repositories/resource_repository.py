@@ -53,6 +53,28 @@ class ResourceRepository:
         return metric
 
     @staticmethod
+    def upsert_metric(resource_db_id, metric_name, metric_value):
+        """Insert a metric or update its value if it already exists."""
+        metric = ResourceMetric.query.filter_by(resource_id=resource_db_id, metric_name=metric_name).first()
+        if not metric:
+            metric = ResourceMetric(
+                resource_id=resource_db_id,
+                metric_name=metric_name,
+                metric_value=metric_value
+            )
+            db.session.add(metric)
+        else:
+            metric.metric_value = metric_value
+        
+        try:
+            db.session.commit()
+            return metric
+        except IntegrityError:
+            db.session.rollback()
+            return ResourceMetric.query.filter_by(resource_id=resource_db_id, metric_name=metric_name).first()
+
+
+    @staticmethod
     def add_cost_record(resource_db_id, monthly_cost):
         """Add a cost record for a resource."""
         cost = CostRecord(
