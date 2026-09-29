@@ -97,7 +97,10 @@ PostgreSQL → SQLAlchemy → Repository → db_loader → FinOps Engine (Analys
 | 2 | Waste detection, mock savings, optimization summary | ✅ Complete |
 | 3 | Recommendation engine, prioritization, and UI | ✅ Complete |
 | 4 | Database integration and models | ✅ Complete |
-| 5 | AWS API integration (boto3) | 🔜 Planned |
+| 5.2 | AWS API integration (boto3 foundation) | ✅ Complete |
+| 5.3 | AWS Resource Discovery (EC2 + EBS) | ✅ Complete |
+| 5.4 | AWS Database Integration | ✅ Complete |
+| 5.5 | AWS CloudWatch Metrics Integration | ✅ Complete |
 | 6 | AI-powered optimization recommendations | 🔜 Planned |
 | 7 | Advanced dashboard with dynamic charts | 🔜 Planned |
 
