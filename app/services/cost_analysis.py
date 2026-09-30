@@ -11,16 +11,19 @@ from config import AnalysisThresholds
 
 def count_resources_by_type(data: dict) -> dict[str, int]:
     """Count total resources per service type."""
-    return {service: len(resources) for service, resources in data.items()}
+    service_keys = ["ec2", "ebs", "s3"]
+    return {service: len(data.get(service, [])) for service in service_keys if service in data}
 
 
 def count_resources_by_region(data: dict) -> dict[str, int]:
     """Count total resources across all services grouped by region."""
     regions: Counter = Counter()
-    for resources in data.values():
-        for r in resources:
+    service_keys = ["ec2", "ebs", "s3"]
+    for service in service_keys:
+        for r in data.get(service, []):
             regions[r.get("region", "unknown")] += 1
     return dict(regions)
+
 
 
 def count_ec2_by_status(ec2_data: list[dict]) -> dict[str, int]:
@@ -44,16 +47,22 @@ def calculate_cost_breakdown(data: dict) -> dict:
     """Calculate per-service and total monthly costs.
 
     Returns:
-        Dict with keys: total, ec2, ebs, s3 (all floats).
+        Dict with keys: total, ec2, ebs, s3, account_cost (floats).
     """
     ec2_cost = _total_cost(data.get("ec2", []))
     ebs_cost = _total_cost(data.get("ebs", []))
     s3_cost = _total_cost(data.get("s3", []))
+    account_cost = float(data.get("account_cost", 0.0))
+
+    total_combined = ec2_cost + ebs_cost + s3_cost + account_cost
+    display_total = round(total_combined, 2) if total_combined >= 0.01 else round(total_combined, 10)
+
     return {
-        "total": round(ec2_cost + ebs_cost + s3_cost, 2),
+        "total": display_total,
         "ec2": round(ec2_cost, 2),
         "ebs": round(ebs_cost, 2),
         "s3": round(s3_cost, 2),
+        "account_cost": round(account_cost, 10),
     }
 
 
@@ -65,18 +74,23 @@ def calculate_ec2_utilization(ec2_data: list[dict]) -> dict:
     """Calculate average CPU and memory utilization for running EC2 instances.
 
     Returns:
-        Dict with avg_cpu and avg_memory (floats), or 0.0 if no running instances.
+        Dict with avg_cpu and avg_memory (floats), or 0.0 if no running instances/metrics.
     """
     running = [i for i in ec2_data if i.get("status") == "running"]
     if not running:
         return {"avg_cpu": 0.0, "avg_memory": 0.0}
 
-    avg_cpu = sum(i.get("cpu_utilization", 0.0) for i in running) / len(running)
-    avg_memory = sum(i.get("memory_utilization", 0.0) for i in running) / len(running)
+    cpu_vals = [i["cpu_utilization"] for i in running if i.get("cpu_utilization") is not None]
+    mem_vals = [i["memory_utilization"] for i in running if i.get("memory_utilization") is not None]
+
+    avg_cpu = (sum(cpu_vals) / len(cpu_vals)) if cpu_vals else 0.0
+    avg_memory = (sum(mem_vals) / len(mem_vals)) if mem_vals else 0.0
+
     return {
         "avg_cpu": round(avg_cpu, 1),
         "avg_memory": round(avg_memory, 1),
     }
+
 
 
 def calculate_ebs_utilization(ebs_data: list[dict]) -> dict:
@@ -198,5 +212,6 @@ def generate_summary(data: dict) -> dict:
         "ec2_utilization": ec2_util,
         "ebs_utilization": ebs_util,
         "underutilized_resources": underutilized,
-        "total_resources": sum(len(v) for v in data.values()),
+        "total_resources": sum(len(data.get(k, [])) for k in ["ec2", "ebs", "s3"]),
+
     }

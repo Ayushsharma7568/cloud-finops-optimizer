@@ -119,11 +119,12 @@ def _detect_ec2_findings(ec2_data: list[dict]) -> list[OptimizationFinding]:
             continue
 
         # --- Underutilized running instances ---
-        cpu = instance.get("cpu_utilization", 0.0)
-        memory = instance.get("memory_utilization", 0.0)
+        cpu = instance.get("cpu_utilization")
+        memory = instance.get("memory_utilization")
 
-        is_cpu_low = cpu < AnalysisThresholds.EC2_CPU_UNDERUTILIZED
-        is_mem_low = memory < AnalysisThresholds.EC2_MEMORY_UNDERUTILIZED
+        is_cpu_low = (cpu is not None) and (cpu < AnalysisThresholds.EC2_CPU_UNDERUTILIZED)
+        is_mem_low = (memory is not None) and (memory < AnalysisThresholds.EC2_MEMORY_UNDERUTILIZED)
+
 
         if is_cpu_low or is_mem_low:
             optimized_cost = round(cost * MockPricing.EC2_DOWNSIZE_COST_RATIO, 2)
