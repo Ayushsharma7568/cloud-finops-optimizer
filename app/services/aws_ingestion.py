@@ -8,7 +8,9 @@ import logging
 from app.services.aws_ec2_discovery import discover_ec2_instances
 from app.services.aws_ebs_discovery import discover_ebs_volumes
 from app.services.aws_cloudwatch import CloudWatchService
+from app.services.aws_cost import AWSCostService
 from app.repositories.resource_repository import ResourceRepository
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +20,9 @@ def sync_aws_resources():
     
     1. Discovers EC2 instances and EBS volumes via Boto3.
     2. Maps the normalized outputs to the ResourceRepository.
-    3. Handles creations and updates idempotently.
+    3. Fetches CloudWatch metrics for instances.
+    4. Synchronizes daily AWS cost data via Cost Explorer.
+    5. Handles creations and updates idempotently.
     
     Returns:
         dict: A summary of the synchronization results.
@@ -28,6 +32,7 @@ def sync_aws_resources():
     results = {
         "ec2_instances_processed": 0,
         "ebs_volumes_processed": 0,
+        "cost_records_processed": 0,
         "errors": []
     }
     
@@ -50,11 +55,48 @@ def sync_aws_resources():
     except Exception as e:
         logger.error(f"Failed to sync EBS volumes: {e}")
         results["errors"].append(str(e))
+
+    # 3. Sync Costs
+    try:
+        cost_records = sync_aws_costs()
+        results["cost_records_processed"] = len(cost_records)
+    except Exception as e:
+        logger.error(f"Failed to sync AWS costs: {e}")
+        results["errors"].append(str(e))
         
-    logger.info("Sync complete. %d EC2 instances, %d EBS volumes processed.", 
-                results["ec2_instances_processed"], results["ebs_volumes_processed"])
+    logger.info("Sync complete. %d EC2 instances, %d EBS volumes, %d cost records processed.", 
+                results["ec2_instances_processed"], results["ebs_volumes_processed"], results["cost_records_processed"])
     
     return results
+
+
+def sync_aws_costs(start_date: str = None, end_date: str = None, days: int = 7):
+    """Retrieve daily cost records from AWS Cost Explorer and persist idempotently."""
+    logger.info("Starting AWS Cost Explorer synchronization...")
+
+    account_resource = ResourceRepository.upsert_resource(
+        resource_id="AWS_ACCOUNT",
+        resource_type="AWS_ACCOUNT",
+        region="global",
+        status="active"
+    )
+
+    cost_service = AWSCostService()
+    records = cost_service.get_daily_costs(start_date=start_date, end_date=end_date, days=days)
+
+    persisted = []
+    for rec in records:
+        rec_dt = datetime.strptime(rec["start_date"], "%Y-%m-%d")
+        cost_entry = ResourceRepository.upsert_cost_record(
+            resource_db_id=account_resource.id,
+            monthly_cost=float(rec["amount"]),
+            recorded_at=rec_dt
+        )
+        persisted.append(cost_entry)
+
+    logger.info("Successfully synchronized %d cost records.", len(persisted))
+    return persisted
+
 
 
 def _ingest_resource(normalized_aws_data: dict):

@@ -84,3 +84,36 @@ class ResourceRepository:
         db.session.add(cost)
         db.session.commit()
         return cost
+
+    @staticmethod
+    def upsert_cost_record(resource_db_id, monthly_cost, recorded_at=None):
+        """Insert a cost record or update its value if a record for the same resource and timestamp exists."""
+        cost = None
+        if recorded_at is not None:
+            cost = CostRecord.query.filter_by(
+                resource_id=resource_db_id,
+                recorded_at=recorded_at
+            ).first()
+
+        if not cost:
+            cost = CostRecord(
+                resource_id=resource_db_id,
+                monthly_cost=float(monthly_cost),
+                recorded_at=recorded_at
+            )
+            db.session.add(cost)
+        else:
+            cost.monthly_cost = float(monthly_cost)
+
+        try:
+            db.session.commit()
+            return cost
+        except IntegrityError:
+            db.session.rollback()
+            if recorded_at is not None:
+                return CostRecord.query.filter_by(
+                    resource_id=resource_db_id,
+                    recorded_at=recorded_at
+                ).first()
+            return CostRecord.query.filter_by(resource_id=resource_db_id).first()
+
