@@ -138,23 +138,24 @@ def detect_underutilized_resources(data: dict) -> list[dict]:
             })
             continue
 
-        cpu = instance.get("cpu_utilization", 0.0)
-        memory = instance.get("memory_utilization", 0.0)
+        cpu = instance.get("cpu_utilization")
+        memory = instance.get("memory_utilization")
 
-        if cpu < AnalysisThresholds.EC2_CPU_UNDERUTILIZED:
+        if cpu is not None and cpu < AnalysisThresholds.EC2_CPU_UNDERUTILIZED:
             flags.append({
                 "resource_id": resource_id,
                 "resource_type": "EC2",
                 "reason": f"Low CPU utilization ({cpu}%)",
                 "monthly_cost": instance.get("monthly_cost", 0.0),
             })
-        elif memory < AnalysisThresholds.EC2_MEMORY_UNDERUTILIZED:
+        elif memory is not None and memory < AnalysisThresholds.EC2_MEMORY_UNDERUTILIZED:
             flags.append({
                 "resource_id": resource_id,
                 "resource_type": "EC2",
                 "reason": f"Low memory utilization ({memory}%)",
                 "monthly_cost": instance.get("monthly_cost", 0.0),
             })
+
 
     # EBS checks
     for volume in data.get("ebs", []):
