@@ -2,7 +2,7 @@
 
 import pytest
 from unittest.mock import patch, MagicMock
-from app.services.aws_ingestion import sync_aws_resources, _ingest_resource
+from app.services.aws_ingestion import sync_aws_resources, sync_aws_costs, _ingest_resource
 from app.services.aws_client import AWSApiError
 
 # Sample normalized data as it would be returned from discovery
@@ -35,24 +35,23 @@ MOCK_EBS_DATA = {
 
 class TestAWSIngestion:
 
+    @patch('app.services.aws_ingestion.sync_aws_costs')
     @patch('app.services.aws_ingestion.discover_ec2_instances')
     @patch('app.services.aws_ingestion.discover_ebs_volumes')
     @patch('app.services.aws_ingestion.ResourceRepository.upsert_resource')
-    def test_sync_aws_resources_success(self, mock_upsert, mock_discover_ebs, mock_discover_ec2):
+    def test_sync_aws_resources_success(self, mock_upsert, mock_discover_ebs, mock_discover_ec2, mock_sync_costs):
         """Test successful synchronization of EC2 and EBS resources."""
-        # Setup mocks
         mock_discover_ec2.return_value = [MOCK_EC2_DATA]
         mock_discover_ebs.return_value = [MOCK_EBS_DATA]
+        mock_sync_costs.return_value = [MagicMock()]
         
-        # Call sync
         results = sync_aws_resources()
         
-        # Verify
         assert results["ec2_instances_processed"] == 1
         assert results["ebs_volumes_processed"] == 1
+        assert results["cost_records_processed"] == 1
         assert len(results["errors"]) == 0
         
-        # Check upsert was called for both resources with correct parameters
         assert mock_upsert.call_count == 2
         mock_upsert.assert_any_call(
             resource_id="i-test1",
@@ -67,54 +66,53 @@ class TestAWSIngestion:
             status="in-use"
         )
 
+    @patch('app.services.aws_ingestion.sync_aws_costs')
     @patch('app.services.aws_ingestion.discover_ec2_instances')
     @patch('app.services.aws_ingestion.discover_ebs_volumes')
-    def test_sync_aws_resources_api_error(self, mock_discover_ebs, mock_discover_ec2):
+    def test_sync_aws_resources_api_error(self, mock_discover_ebs, mock_discover_ec2, mock_sync_costs):
         """Test synchronization when an AWS API error occurs."""
         mock_discover_ec2.side_effect = AWSApiError("AWS is down")
         mock_discover_ebs.return_value = []
+        mock_sync_costs.return_value = []
         
         results = sync_aws_resources()
         
-        # It should handle the error gracefully without crashing
         assert results["ec2_instances_processed"] == 0
         assert results["ebs_volumes_processed"] == 0
         assert len(results["errors"]) == 1
         assert "AWS is down" in results["errors"][0]
 
+    @patch('app.services.aws_ingestion.sync_aws_costs')
     @patch('app.services.aws_ingestion.discover_ec2_instances')
     @patch('app.services.aws_ingestion.discover_ebs_volumes')
     @patch('app.services.aws_ingestion.ResourceRepository.upsert_resource')
-    def test_sync_idempotency_via_upsert(self, mock_upsert, mock_discover_ebs, mock_discover_ec2):
+    def test_sync_idempotency_via_upsert(self, mock_upsert, mock_discover_ebs, mock_discover_ec2, mock_sync_costs):
         """Test that multiple syncs just call upsert safely."""
         mock_discover_ec2.return_value = [MOCK_EC2_DATA]
         mock_discover_ebs.return_value = []
+        mock_sync_costs.return_value = []
         
-        # First sync
         sync_aws_resources()
-        # Second sync
         sync_aws_resources()
         
-        # upsert should have been called twice, delegating the logic of
-        # update vs create to the database layer correctly.
         assert mock_upsert.call_count == 2
 
+    @patch('app.services.aws_ingestion.sync_aws_costs')
     @patch('app.services.aws_ingestion.discover_ec2_instances')
     @patch('app.services.aws_ingestion.discover_ebs_volumes')
     @patch('app.services.aws_ingestion.CloudWatchService')
     @patch('app.services.aws_ingestion.ResourceRepository.upsert_resource')
     @patch('app.services.aws_ingestion.ResourceRepository.upsert_metric')
-    def test_sync_aws_resources_cloudwatch_integration(self, mock_upsert_metric, mock_upsert_resource, mock_cw_service_class, mock_discover_ebs, mock_discover_ec2):
+    def test_sync_aws_resources_cloudwatch_integration(self, mock_upsert_metric, mock_upsert_resource, mock_cw_service_class, mock_discover_ebs, mock_discover_ec2, mock_sync_costs):
         """Test that CloudWatch metrics are properly fetched and persisted during ingestion."""
         mock_discover_ec2.return_value = [MOCK_EC2_DATA]
         mock_discover_ebs.return_value = []
+        mock_sync_costs.return_value = []
         
-        # Mock resource DB object returned by upsert_resource
         mock_db_resource = MagicMock()
         mock_db_resource.id = 99
         mock_upsert_resource.return_value = mock_db_resource
         
-        # Mock CloudWatch response with data
         mock_cw_instance = MagicMock()
         mock_cw_instance.get_ec2_cpu_utilization.return_value = {
             "resource_id": "i-test1",
@@ -124,16 +122,11 @@ class TestAWSIngestion:
         }
         mock_cw_service_class.return_value = mock_cw_instance
         
-        # Call sync
         sync_aws_resources()
         
-        # Verify CloudWatch was called correctly
         mock_cw_instance.get_ec2_cpu_utilization.assert_called_once_with("i-test1")
-        
-        # Verify the metric was persisted with the correct name for FinOps rules
         mock_upsert_metric.assert_called_once_with(
             resource_db_id=99,
-            metric_name="cpu_utilization",  # Must match waste_detector.py expectation
+            metric_name="cpu_utilization",
             metric_value=8.60
         )
-
