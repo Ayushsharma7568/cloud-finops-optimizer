@@ -17,10 +17,18 @@ from app.services.finops_reporting import (
 )
 
 
+from app.repositories.user_repository import UserRepository
+
+
 @pytest.fixture
 def app():
     """Create a Flask app with an in-memory SQLite DB for testing."""
-    test_config = {"SQLALCHEMY_DATABASE_URI": "sqlite:///:memory:", "TESTING": True}
+    test_config = {
+        "SQLALCHEMY_DATABASE_URI": "sqlite:///:memory:",
+        "TESTING": True,
+        "SECRET_KEY": "test-secret-key-phase6",
+        "WTF_CSRF_ENABLED": False,
+    }
     app_inst = create_app(test_config=test_config)
 
     with app_inst.app_context():
@@ -32,8 +40,15 @@ def app():
 
 @pytest.fixture
 def client(app):
-    """Flask test client."""
-    return app.test_client()
+    """Flask test client logged in for protected endpoint testing."""
+    with app.app_context():
+        user = UserRepository.create_user("testrunner", "runner@finops.local", "TestPass123!")
+        user_id = user.id
+    c = app.test_client()
+    with c.session_transaction() as sess:
+        sess["_user_id"] = str(user_id)
+        sess["_fresh"] = True
+    return c
 
 
 class TestFinOpsAnalysisRunsAndReporting:
