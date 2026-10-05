@@ -8,10 +8,23 @@ load_dotenv()
 BASE_DIR = Path(__file__).resolve().parent
 
 
+def _get_secret_key() -> str:
+    """Retrieve SECRET_KEY from environment, raising an error in production if unconfigured."""
+    raw_key = os.getenv("SECRET_KEY", "").strip()
+    if raw_key:
+        return raw_key
+
+    env_mode = os.getenv("FLASK_ENV", os.getenv("ENV", "development")).lower()
+    if env_mode in ["production", "prod"]:
+        raise ValueError("CRITICAL: SECRET_KEY must be set in environment for production execution.")
+
+    return "dev-finops-secret-key-change-in-production"
+
+
 class Config:
     """Base configuration."""
 
-    SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key")
+    SECRET_KEY = _get_secret_key()
     SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL", "sqlite:///:memory:")
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 

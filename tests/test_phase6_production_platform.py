@@ -190,10 +190,28 @@ def test_11_session_behavior(auth_client):
 # ---------------------------------------------------------------------------
 
 def test_12_secret_configuration(app):
-    """Verify application configuration has secret key set and cookie security keys."""
+    """Verify application configuration has non-empty secret key set and cookie security keys."""
+    assert app.secret_key is not None
+    assert len(app.secret_key) > 0
     assert app.config["SECRET_KEY"] is not None
     assert app.config["SESSION_COOKIE_HTTPONLY"] is True
     assert app.config["SESSION_COOKIE_SAMESITE"] in ["Lax", "Strict", "None"]
+
+
+def test_login_page_renders_with_session_and_secret_key(client, app):
+    """Verify GET /login renders 200 OK without RuntimeError and initializes CSRF session token."""
+    response = client.get("/login")
+    assert response.status_code == 200
+    assert b"csrf_token" in response.data or b"Login" in response.data or b"Sign In" in response.data
+
+
+def test_production_secret_key_validation(monkeypatch):
+    """Verify production mode enforces non-empty SECRET_KEY."""
+    monkeypatch.setenv("SECRET_KEY", "   ")
+    monkeypatch.setenv("FLASK_ENV", "production")
+    from config import _get_secret_key
+    with pytest.raises(ValueError):
+        _get_secret_key()
 
 
 def test_13_csrf_behavior(app):

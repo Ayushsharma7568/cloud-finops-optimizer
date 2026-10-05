@@ -14,6 +14,9 @@ def create_app(test_config=None):
     if test_config:
         app.config.update(test_config)
 
+    if app.config.get("SECRET_KEY"):
+        app.secret_key = app.config["SECRET_KEY"]
+
     # Initialize extensions
     from app.extensions import db, migrate
     db.init_app(app)
