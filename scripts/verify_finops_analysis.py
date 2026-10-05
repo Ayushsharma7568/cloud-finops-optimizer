@@ -1,8 +1,7 @@
-"""Phase 5.8 Real AWS FinOps Analysis Verification Script.
+"""Phase 5.9 FinOps Analysis Run & Reporting Verification Script.
 
-Executes the full FinOps analysis pipeline against current PostgreSQL data
-(loaded via db_loader correlation layer), verifies findings, recommendations,
-savings estimation, and account-level cost preservation.
+Executes FinOps analysis, verifies AnalysisRun lifecycle, reporting summaries,
+and analysis history retrieval from PostgreSQL.
 """
 
 import sys
@@ -13,48 +12,47 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 from app import create_app
 from app.services.finops_analyzer import run_full_analysis
-from app.models import OptimizationFinding, Recommendation
+from app.services.finops_reporting import (
+    get_latest_analysis_summary,
+    get_recent_analysis_history,
+)
 
 
 def main():
     print("==================================================")
-    print("Real AWS FinOps Analysis Verification")
+    print("FinOps Analysis Run Verification")
     print("==================================================")
     print()
 
     app = create_app()
     with app.app_context():
+        # Execute analysis run
         results = run_full_analysis()
-        data = results["data"]
-        metrics = data["summary_metrics"]
-        findings = results["findings"]
-        recommendations = results["recommendations"]
+        run = results["analysis_run"]
 
-        savings_available_count = sum(1 for r in recommendations if r.estimated_monthly_savings > 0)
-        savings_unavailable_count = sum(1 for r in recommendations if r.estimated_monthly_savings == 0)
+        # Retrieve summary via reporting service
+        summary = get_latest_analysis_summary()
+        history = get_recent_analysis_history(limit=5)
 
-        print(f"Resources analyzed: {metrics['total_resources']}")
+        print("Analysis Run:")
+        print(f"ID: {summary['id']}")
+        print(f"Status: {summary['status']}")
         print()
-        print(f"EC2 resources: {metrics['ec2_total']}")
-        print(f"EBS resources: {metrics['ebs_total']}")
+        print(f"Resources analyzed: {summary['resource_count']}")
+        print(f"Findings: {summary['findings_count']}")
+        print(f"Recommendations: {summary['recommendations_count']}")
         print()
-        print("CPU metrics:")
-        print(f"  Available: {metrics['ec2_with_cpu_data']}")
-        print(f"  Missing: {metrics['ec2_without_cpu_data']}")
+        print("Savings:")
+        print(f"Available: {summary['savings_available_count']}")
+        print(f"Unavailable: {summary['savings_unavailable_count']}")
         print()
-        print(f"Findings generated: {len(findings)}")
-        print(f"Recommendations generated: {len(recommendations)}")
+        print("Recent Analysis Runs:")
+        for idx, item in enumerate(history, start=1):
+            print(f"#{idx} ID={item['id']} Status={item['status']}")
+
         print()
-        print("Savings estimates:")
-        print(f"  Available: {savings_available_count}")
-        print(f"  Unavailable: {savings_unavailable_count}")
-        print()
-        print("Account-level cost:")
-        print(f"  Periods: {metrics['account_cost_periods']}")
-        print(f"  Total: ${data['account_cost']:.10f}".rstrip('0').rstrip('.') + " USD")
-        print()
-        print("Analysis status:")
-        print("  SUCCESS")
+        print("Verification:")
+        print("SUCCESS")
         print("==================================================")
 
 

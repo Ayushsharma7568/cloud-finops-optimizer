@@ -2,6 +2,7 @@
 
 Coordinates loading DB FinOps data, running waste detection, generating recommendations,
 calculating savings, and persisting results to PostgreSQL via AnalysisRepository.
+Handles lifecycle transitions (RUNNING -> SUCCESS / FAILED).
 """
 
 import logging
@@ -19,80 +20,97 @@ logger = logging.getLogger(__name__)
 def run_full_analysis() -> dict:
     """Run full FinOps analysis workflow against PostgreSQL database data.
 
+    Lifecycle:
+    1. Create AnalysisRun (RUNNING)
+    2. Load DB FinOps data & metrics
+    3. Run waste detection & recommendations
+    4. Persist findings & recommendations idempotently for this run
+    5. Complete AnalysisRun (SUCCESS) or mark FAILED on exception.
+
     Returns:
         dict: Summary of analysis run containing run model, summary metrics,
               findings, recommendations, and optimization metrics.
     """
     logger.info("Starting FinOps analysis run...")
 
-    # 1. Create AnalysisRun record in DB
+    # 1. Create AnalysisRun record in DB (status='RUNNING')
     run = AnalysisRepository.create_analysis_run()
 
-    # 2. Load unified FinOps context from DB
-    data = load_data_from_db()
-    summary = generate_summary(data)
+    try:
+        # 2. Load unified FinOps context from DB
+        data = load_data_from_db()
+        summary = generate_summary(data)
 
-    # 3. Detect waste findings and generate recommendations
-    findings = detect_findings(data)
-    recommendations = generate_recommendations(findings)
-    optimization = generate_optimization_summary(
-        recommendations, summary["costs"]["total"]
-    )
+        # 3. Detect waste findings and generate recommendations
+        findings = detect_findings(data)
+        recommendations = generate_recommendations(findings)
+        optimization = generate_optimization_summary(
+            recommendations, summary["costs"]["total"]
+        )
 
-    # 4. Persist findings & recommendations in DB idempotently
-    persisted_findings = 0
-    persisted_recommendations = 0
+        # 4. Persist findings & recommendations in DB idempotently for this run
+        persisted_findings = 0
+        persisted_recommendations = 0
 
-    for rec in recommendations:
-        res_db = ResourceRepository.get_resource_by_external_id(rec.resource_id)
-        if res_db:
-            issue_val = getattr(rec.issue_type, "value", str(rec.issue_type))
-            sev_val = getattr(rec.severity, "value", str(rec.severity))
-            action_val = getattr(rec.action_category, "value", str(rec.action_category))
-            conf_val = getattr(rec.confidence, "value", str(rec.confidence))
+        for rec in recommendations:
+            res_db = ResourceRepository.get_resource_by_external_id(rec.resource_id)
+            if res_db:
+                issue_val = getattr(rec.issue_type, "value", str(rec.issue_type))
+                sev_val = getattr(rec.severity, "value", str(rec.severity))
+                action_val = getattr(rec.action_category, "value", str(rec.action_category))
+                conf_val = getattr(rec.confidence, "value", str(rec.confidence))
 
-            saved_finding = AnalysisRepository.save_finding(
-                analysis_run_id=run.id,
-                resource_db_id=res_db.id,
-                issue_type=issue_val,
-                severity=sev_val,
-                savings=rec.estimated_monthly_savings,
-                description=rec.reason,
-            )
-            persisted_findings += 1
+                saved_finding = AnalysisRepository.save_finding(
+                    analysis_run_id=run.id,
+                    resource_db_id=res_db.id,
+                    issue_type=issue_val,
+                    severity=sev_val,
+                    savings=rec.estimated_monthly_savings,
+                    description=rec.reason,
+                )
+                persisted_findings += 1
 
-            AnalysisRepository.save_recommendation(
-                finding_id=saved_finding.id,
-                action_category=action_val,
-                recommendation_text=rec.recommendation,
-                confidence=conf_val,
-                priority=rec.priority,
-                savings=rec.estimated_monthly_savings,
-            )
-            persisted_recommendations += 1
+                AnalysisRepository.save_recommendation(
+                    finding_id=saved_finding.id,
+                    action_category=action_val,
+                    recommendation_text=rec.recommendation,
+                    confidence=conf_val,
+                    priority=rec.priority,
+                    savings=rec.estimated_monthly_savings,
+                )
+                persisted_recommendations += 1
 
-    # 5. Complete AnalysisRun record
-    completed_run = AnalysisRepository.complete_analysis_run(
-        run_id=run.id,
-        resource_count=summary["total_resources"],
-        total_cost=summary["costs"]["total"],
-        potential_savings=optimization["total_monthly_savings"],
-    )
+        # 5. Complete AnalysisRun record (status='SUCCESS')
+        completed_run = AnalysisRepository.complete_analysis_run(
+            run_id=run.id,
+            resource_count=summary["total_resources"],
+            total_cost=summary["costs"]["total"],
+            potential_savings=optimization["total_monthly_savings"],
+        )
 
-    logger.info(
-        "FinOps analysis run #%d completed successfully. Processed %d resources, %d findings persisted.",
-        completed_run.id,
-        summary["total_resources"],
-        persisted_findings,
-    )
+        logger.info(
+            "FinOps analysis run #%d completed successfully. Processed %d resources, %d findings persisted.",
+            completed_run.id,
+            summary["total_resources"],
+            persisted_findings,
+        )
 
-    return {
-        "analysis_run": completed_run,
-        "summary": summary,
-        "findings": findings,
-        "recommendations": recommendations,
-        "optimization": optimization,
-        "data": data,
-        "persisted_findings_count": persisted_findings,
-        "persisted_recommendations_count": persisted_recommendations,
-    }
+        return {
+            "analysis_run": completed_run,
+            "summary": summary,
+            "findings": findings,
+            "recommendations": recommendations,
+            "optimization": optimization,
+            "data": data,
+            "persisted_findings_count": persisted_findings,
+            "persisted_recommendations_count": persisted_recommendations,
+        }
+
+    except Exception as e:
+        logger.error("FinOps analysis run #%d failed: %s", run.id, e)
+        AnalysisRepository.fail_analysis_run(
+            run_id=run.id,
+            error_message=str(e),
+            status="FAILED"
+        )
+        raise RuntimeError(f"Analysis run #{run.id} failed: {e}") from e

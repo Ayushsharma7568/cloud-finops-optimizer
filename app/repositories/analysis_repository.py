@@ -8,7 +8,7 @@ class AnalysisRepository:
 
     @staticmethod
     def create_analysis_run():
-        """Create a new analysis run record."""
+        """Create a new analysis run record in RUNNING status."""
         run = AnalysisRun(status="RUNNING")
         db.session.add(run)
         db.session.commit()
@@ -17,7 +17,7 @@ class AnalysisRepository:
     @staticmethod
     def complete_analysis_run(run_id, resource_count, total_cost, potential_savings, status="SUCCESS"):
         """Mark an analysis run as complete and update metrics."""
-        run = AnalysisRun.query.get(run_id)
+        run = db.session.get(AnalysisRun, run_id) if hasattr(db.session, 'get') else AnalysisRun.query.get(run_id)
         if run:
             run.completed_at = datetime.utcnow()
             run.status = status
@@ -28,9 +28,36 @@ class AnalysisRepository:
         return run
 
     @staticmethod
+    def fail_analysis_run(run_id, error_message, status="FAILED"):
+        """Mark an analysis run as FAILED and record error message."""
+        run = db.session.get(AnalysisRun, run_id) if hasattr(db.session, 'get') else AnalysisRun.query.get(run_id)
+        if run:
+            run.completed_at = datetime.utcnow()
+            run.status = status
+            run.error_message = str(error_message)
+            db.session.commit()
+        return run
+
+    @staticmethod
     def get_latest_analysis_run():
-        """Get the most recent successful analysis run."""
-        return AnalysisRun.query.filter_by(status="SUCCESS").order_by(AnalysisRun.started_at.desc()).first()
+        """Get the most recent successful or completed analysis run."""
+        return (
+            AnalysisRun.query.filter(AnalysisRun.status.in_(["SUCCESS", "COMPLETED"]))
+            .order_by(AnalysisRun.started_at.desc())
+            .first()
+        )
+
+    @staticmethod
+    def get_recent_analysis_runs(limit=10):
+        """Retrieve recent analysis runs ordered from newest to oldest."""
+        return AnalysisRun.query.order_by(AnalysisRun.started_at.desc()).limit(limit).all()
+
+    @staticmethod
+    def get_analysis_run_by_id(run_id):
+        """Retrieve a specific analysis run by its primary key ID."""
+        if hasattr(db.session, 'get'):
+            return db.session.get(AnalysisRun, run_id)
+        return AnalysisRun.query.get(run_id)
 
     @staticmethod
     def save_finding(analysis_run_id, resource_db_id, issue_type, severity, savings, description):

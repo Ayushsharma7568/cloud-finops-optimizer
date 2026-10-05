@@ -51,8 +51,10 @@ class AnalysisRun(db.Model):
     resource_count = db.Column(db.Integer, default=0)
     total_monthly_cost = db.Column(db.Float, default=0.0)
     potential_monthly_savings = db.Column(db.Float, default=0.0)
+    error_message = db.Column(db.Text, nullable=True)
 
     findings = db.relationship('OptimizationFinding', back_populates='analysis_run', cascade="all, delete-orphan")
+
 
 
 class OptimizationFinding(db.Model):
