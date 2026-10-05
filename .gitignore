@@ -1,5 +1,9 @@
 # Virtual environment
 venv/
+venv-linux/
+vevn-linux/
+postgres-learning/
+scripts/debug_persistence.py
 
 # Environment variables (real credentials)
 .env
