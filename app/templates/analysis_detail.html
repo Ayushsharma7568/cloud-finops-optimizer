@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+{% block title %}Analysis Run #{{ summary.id }} Detail — Cloud FinOps Optimizer{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <h1 class="page-title">Analysis Run #{{ summary.id }}</h1>
+            {% if summary.status == 'SUCCESS' %}
+                <span class="badge badge-success"><span class="badge-dot"></span>SUCCESS</span>
+            {% elif summary.status == 'RUNNING' %}
+                <span class="badge badge-warning"><span class="badge-dot"></span>RUNNING</span>
+            {% else %}
+                <span class="badge badge-danger"><span class="badge-dot"></span>FAILED</span>
+            {% endif %}
+        </div>
+        <p class="page-subtitle">Executed at {{ summary.started_at or 'N/A' }} | Completed: {{ summary.completed_at or 'N/A' }}</p>
+    </div>
+    <div>
+        <a href="{{ url_for('analysis_history') }}" class="btn btn-secondary">
+            &larr; Back to History
+        </a>
+    </div>
+</div>
+
+{% if summary.error_message %}
+<div class="card mb-6" style="border-left: 4px solid var(--accent-rose); background: rgba(244, 63, 94, 0.08);">
+    <h3 style="color: var(--accent-rose); margin-bottom: 8px;">Run Failure Error</h3>
+    <p style="color: var(--text-heading); font-family: monospace; font-size: 0.9rem;">{{ summary.error_message }}</p>
+</div>
+{% endif %}
+
+<!-- Run KPI Cards -->
+<div class="metrics-grid mb-6">
+    <div class="metric-card">
+        <div class="metric-header">
+            <span class="metric-title">Analyzed Resources</span>
+        </div>
+        <div class="metric-value">{{ summary.resource_count or 0 }}</div>
+        <div class="metric-subtext">Discovered during this run</div>
+    </div>
+
+    <div class="metric-card">
+        <div class="metric-header">
+            <span class="metric-title">Waste Findings</span>
+        </div>
+        <div class="metric-value" style="color: var(--accent-amber);">{{ summary.findings_count or 0 }}</div>
+        <div class="metric-subtext">Identified optimization issues</div>
+    </div>
+
+    <div class="metric-card">
+        <div class="metric-header">
+            <span class="metric-title">Recommendations</span>
+        </div>
+        <div class="metric-value" style="color: var(--accent-cyan);">{{ summary.recommendations_count or 0 }}</div>
+        <div class="metric-subtext">Generated actionable items</div>
+    </div>
+
+    <div class="metric-card">
+        <div class="metric-header">
+            <span class="metric-title">Potential Savings</span>
+        </div>
+        <div class="metric-value" style="color: var(--accent-emerald);">
+            {% if summary.potential_monthly_savings is defined and summary.potential_monthly_savings is not none and summary.potential_monthly_savings > 0 %}
+                ${{ "%.2f"|format(summary.potential_monthly_savings) }}/mo
+            {% else %}
+                $0.00 / N/A
+            {% endif %}
+        </div>
+        <div class="metric-subtext">
+            {{ summary.savings_available_count or 0 }} available, {{ summary.savings_unavailable_count or 0 }} unavailable
+        </div>
+    </div>
+</div>
+
+<!-- Findings & Recommendations Detail Table -->
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">Run Findings & Actionable Recommendations</h3>
+    </div>
+    <div class="table-container">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Severity</th>
+                    <th>Resource ID</th>
+                    <th>Issue Type</th>
+                    <th>Finding Description</th>
+                    <th>Linked Recommendation</th>
+                    <th>Est. Savings</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for finding in summary.findings %}
+                {% set sev_str = (finding.severity.value if finding.severity.value is defined else finding.severity)|upper %}
+                <tr>
+                    <td>
+                        {% if sev_str == 'CRITICAL' or sev_str == 'HIGH' %}
+                            <span class="badge badge-danger"><span class="badge-dot"></span>{{ sev_str }}</span>
+                        {% elif sev_str == 'MEDIUM' %}
+                            <span class="badge badge-warning"><span class="badge-dot"></span>{{ sev_str }}</span>
+                        {% else %}
+                            <span class="badge badge-info">{{ sev_str }}</span>
+                        {% endif %}
+                    </td>
+                    <td><strong style="font-family: monospace; color: var(--text-heading);">{{ finding.resource_id }}</strong></td>
+                    <td><code>{{ finding.issue_type }}</code></td>
+                    <td><div style="max-width: 380px; font-size: 0.85rem;">{{ finding.description }}</div></td>
+                    <td>
+                        <div style="max-width: 380px;">
+                            {% for rec in finding.recommendations %}
+                                <div style="margin-bottom: 6px; font-size: 0.83rem;">
+                                    <span class="badge badge-secondary" style="font-size: 0.7rem;">{{ rec.action_category }}</span>
+                                    <span style="color: var(--text-heading); font-weight: 500;">{{ rec.recommendation_text }}</span>
+                                </div>
+                            {% else %}
+                                <span class="text-muted">No explicit recommendation attached</span>
+                            {% endfor %}
+                        </div>
+                    </td>
+                    <td>
+                        {% if finding.estimated_monthly_savings is defined and finding.estimated_monthly_savings is not none and finding.estimated_monthly_savings > 0 %}
+                            <strong style="color: var(--accent-emerald);">${{ "%.2f"|format(finding.estimated_monthly_savings) }}/mo</strong>
+                        {% else %}
+                            <span class="text-muted">N/A</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" class="text-muted" style="text-align: center; padding: 2.5rem;">
+                        No findings or recommendations recorded for this run.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

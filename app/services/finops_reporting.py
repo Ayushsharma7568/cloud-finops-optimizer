@@ -20,6 +20,7 @@ def format_analysis_run_summary(run) -> dict:
     recs_count = 0
     savings_available = 0
     savings_unavailable = 0
+    findings_list = []
 
     if run.findings:
         for f in run.findings:
@@ -28,6 +29,29 @@ def format_analysis_run_summary(run) -> dict:
                 savings_available += 1
             else:
                 savings_unavailable += 1
+
+            recs = []
+            if f.recommendations:
+                for r in f.recommendations:
+                    recs.append({
+                        "id": r.id,
+                        "action_category": r.action_category,
+                        "recommendation_text": r.recommendation_text,
+                        "confidence": r.confidence,
+                        "priority": r.priority,
+                        "estimated_monthly_savings": r.estimated_monthly_savings,
+                    })
+
+            findings_list.append({
+                "id": f.id,
+                "resource_id": f.resource.resource_id if f.resource else f"Res #{f.resource_id}",
+                "resource_type": f.resource.resource_type if f.resource else "AWS",
+                "issue_type": f.issue_type,
+                "severity": f.severity,
+                "description": f.description,
+                "estimated_monthly_savings": f.estimated_monthly_savings,
+                "recommendations": recs,
+            })
 
     return {
         "id": run.id,
@@ -42,6 +66,7 @@ def format_analysis_run_summary(run) -> dict:
         "recommendations_count": recs_count,
         "savings_available_count": savings_available,
         "savings_unavailable_count": savings_unavailable,
+        "findings": findings_list,
     }
 
 

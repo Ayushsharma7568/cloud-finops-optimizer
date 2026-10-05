@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+{% block title %}Discovered AWS Resources — Cloud FinOps Optimizer{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">AWS Infrastructure Inventory</h1>
+        <p class="page-subtitle">Unified view of all discovered cloud assets and metrics</p>
+    </div>
+    <div style="display: flex; gap: 12px;">
+        <span class="badge badge-info">{{ metrics.total_resources if metrics.total_resources is defined else (ec2_list|length + ebs_list|length + s3_list|length) }} Total Resources</span>
+    </div>
+</div>
+
+<!-- EC2 Instances Section -->
+<div class="card mb-6">
+    <div class="card-header">
+        <div>
+            <h3 class="card-title">
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M12 5l7 7-7 7"></path></svg>
+                Amazon EC2 Instances ({{ ec2_list|length }})
+            </h3>
+            <p class="card-subtitle">Compute instances across configured AWS regions</p>
+        </div>
+    </div>
+    <div class="table-container">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Instance ID</th>
+                    <th>Region</th>
+                    <th>State</th>
+                    <th>Instance Type</th>
+                    <th>CloudWatch CPU Avg</th>
+                    <th>Resource Cost</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in ec2_list %}
+                <tr>
+                    <td>
+                        <strong style="font-family: monospace; color: var(--text-heading);">{{ item.instance_id }}</strong>
+                    </td>
+                    <td><span class="badge badge-secondary">{{ item.region or 'ap-south-1' }}</span></td>
+                    <td>
+                        {% set st = (item.status or item.state or 'unknown')|lower %}
+                        {% if st == 'running' %}
+                            <span class="badge badge-success"><span class="badge-dot"></span>Running</span>
+                        {% elif st == 'stopped' %}
+                            <span class="badge badge-warning"><span class="badge-dot"></span>Stopped</span>
+                        {% else %}
+                            <span class="badge badge-secondary">{{ st }}</span>
+                        {% endif %}
+                    </td>
+                    <td><code>{{ item.instance_type or 't3.micro' }}</code></td>
+                    <td>
+                        {% if item.cpu_utilization is not none and item.cpu_utilization is defined %}
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <div class="progress-bar-bg" style="width: 80px;">
+                                    <div class="progress-bar-fill {% if item.cpu_utilization < 10 %}progress-low{% elif item.cpu_utilization < 50 %}progress-mid{% else %}progress-high{% endif %}" style="width: {{ [item.cpu_utilization, 100]|min }}%;"></div>
+                                </div>
+                                <span style="font-weight: 600;">{{ "%.2f"|format(item.cpu_utilization) }}%</span>
+                            </div>
+                        {% else %}
+                            <span class="text-muted" style="font-style: italic;">No Datapoints</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if item.monthly_cost is defined and item.monthly_cost > 0 %}
+                            <strong style="color: var(--accent-emerald);">${{ "%.4f"|format(item.monthly_cost) }}/mo</strong>
+                        {% else %}
+                            <span class="text-muted">N/A (Account-level Cost)</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" class="text-muted" style="text-align: center; padding: 2rem;">No EC2 instances discovered.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- EBS Volumes Section -->
+<div class="card mb-6">
+    <div class="card-header">
+        <div>
+            <h3 class="card-title">
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2 1.5 3 3.5 3h9c2 0 3.5-1 3.5-3V7c0-2-1.5-3-3.5-3h-9C5.5 4 4 5 4 7z"></path></svg>
+                Amazon EBS Volumes ({{ ebs_list|length }})
+            </h3>
+            <p class="card-subtitle">Block storage volumes attached or unattached</p>
+        </div>
+    </div>
+    <div class="table-container">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Volume ID</th>
+                    <th>Region</th>
+                    <th>State</th>
+                    <th>Size (GB)</th>
+                    <th>IOPS / Utilization</th>
+                    <th>Resource Cost</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in ebs_list %}
+                <tr>
+                    <td>
+                        <strong style="font-family: monospace; color: var(--text-heading);">{{ item.volume_id }}</strong>
+                    </td>
+                    <td><span class="badge badge-secondary">{{ item.region or 'ap-south-1' }}</span></td>
+                    <td>
+                        {% set st = (item.status or item.state or 'unknown')|lower %}
+                        {% if st in ['in-use', 'attached', 'available'] %}
+                            <span class="badge badge-success">{{ item.status or item.state }}</span>
+                        {% elif st in ['unattached', 'unassociated', 'unused'] %}
+                            <span class="badge badge-danger"><span class="badge-dot"></span>{{ item.status or item.state }}</span>
+                        {% else %}
+                            <span class="badge badge-secondary">{{ item.status or item.state }}</span>
+                        {% endif %}
+                    </td>
+                    <td><strong>{{ item.size_gb or 100 }} GB</strong></td>
+                    <td>
+                        {% if item.storage_utilization is defined and item.storage_utilization is not none %}
+                            {{ "%.1f"|format(item.storage_utilization) }}%
+                        {% else %}
+                            <span class="text-muted">Standard</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if item.monthly_cost is defined and item.monthly_cost > 0 %}
+                            <strong style="color: var(--accent-emerald);">${{ "%.4f"|format(item.monthly_cost) }}/mo</strong>
+                        {% else %}
+                            <span class="text-muted">N/A (Account-level Cost)</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" class="text-muted" style="text-align: center; padding: 2rem;">No EBS volumes discovered.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% if s3_list %}
+<!-- S3 Buckets Section -->
+<div class="card mb-6">
+    <div class="card-header">
+        <h3 class="card-title">Amazon S3 Buckets ({{ s3_list|length }})</h3>
+    </div>
+    <div class="table-container">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Bucket Name</th>
+                    <th>Region</th>
+                    <th>Size</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in s3_list %}
+                <tr>
+                    <td><code>{{ item.bucket_name }}</code></td>
+                    <td><span class="badge badge-secondary">{{ item.region or 'global' }}</span></td>
+                    <td>{{ item.size_gb or 0 }} GB</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

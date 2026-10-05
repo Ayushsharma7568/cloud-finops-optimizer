@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Cloud FinOps Optimizer{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+  {% if current_user.is_authenticated %}
+  <nav class="navbar">
+    <div class="nav-container">
+      <a href="{{ url_for('index') }}" class="brand">
+        <div class="brand-icon">CF</div>
+        <span>Cloud FinOps Optimizer</span>
+      </a>
+
+      <ul class="nav-links">
+        <li><a href="{{ url_for('index') }}" class="{% if request.endpoint == 'index' %}active{% endif %}">Dashboard</a></li>
+        <li><a href="{{ url_for('resources_view') }}" class="{% if request.endpoint == 'resources_view' %}active{% endif %}">Resources</a></li>
+        <li><a href="{{ url_for('findings_view') }}" class="{% if request.endpoint == 'findings_view' %}active{% endif %}">Findings</a></li>
+        <li><a href="{{ url_for('recommendations_view') }}" class="{% if request.endpoint == 'recommendations_view' %}active{% endif %}">Recommendations</a></li>
+        <li><a href="{{ url_for('analysis_history') }}" class="{% if request.endpoint in ['analysis_history', 'analysis_detail'] %}active{% endif %}">History</a></li>
+      </ul>
+
+      <div class="user-section">
+        <div class="user-badge">
+          <div class="user-avatar">{{ current_user.username[0]|upper }}</div>
+          <span>{{ current_user.username }}</span>
+        </div>
+        <form action="{{ url_for('logout') }}" method="POST" style="margin:0;">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn btn-secondary btn-sm">Logout</button>
+        </form>
+      </div>
+    </div>
+  </nav>
+  {% endif %}
+
+  <main class="main-content">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }}">
+            <span>{{ message }}</span>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer>
+    <p>&copy; 2026 Cloud FinOps Optimizer — Production Platform</p>
+  </footer>
+
+  {% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}Optimization Findings — Cloud FinOps Optimizer{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">FinOps Optimization Findings</h1>
+        <p class="page-subtitle">Identified resource waste, idle assets, and cost reduction opportunities</p>
+    </div>
+    <div style="display: flex; gap: 12px;">
+        <span class="badge badge-warning">{{ findings|length }} Active Findings</span>
+    </div>
+</div>
+
+<!-- Filters Bar -->
+<div class="card mb-6" style="padding: 1.25rem;">
+    <form method="GET" action="{{ url_for('findings_view') }}" style="display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end;">
+        <div style="flex: 1; min-width: 200px;">
+            <label class="form-label" style="margin-bottom: 6px;">Filter by Severity</label>
+            <select name="severity" class="form-control">
+                <option value="">All Severities</option>
+                <option value="CRITICAL" {% if severity_filter == 'CRITICAL' %}selected{% endif %}>CRITICAL</option>
+                <option value="HIGH" {% if severity_filter == 'HIGH' %}selected{% endif %}>HIGH</option>
+                <option value="MEDIUM" {% if severity_filter == 'MEDIUM' %}selected{% endif %}>MEDIUM</option>
+                <option value="LOW" {% if severity_filter == 'LOW' %}selected{% endif %}>LOW</option>
+            </select>
+        </div>
+        <div style="flex: 1; min-width: 200px;">
+            <label class="form-label" style="margin-bottom: 6px;">Filter by Resource Type</label>
+            <select name="resource_type" class="form-control">
+                <option value="">All Resource Types</option>
+                <option value="EC2" {% if resource_type_filter == 'EC2' %}selected{% endif %}>EC2</option>
+                <option value="EBS" {% if resource_type_filter == 'EBS' %}selected{% endif %}>EBS</option>
+                <option value="S3" {% if resource_type_filter == 'S3' %}selected{% endif %}>S3</option>
+            </select>
+        </div>
+        <div style="display: flex; gap: 8px;">
+            <button type="submit" class="btn btn-primary">Apply Filters</button>
+            <a href="{{ url_for('findings_view') }}" class="btn btn-secondary">Reset</a>
+        </div>
+    </form>
+</div>
+
+<!-- Findings List -->
+<div class="card">
+    <div class="table-container">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Severity</th>
+                    <th>Resource ID</th>
+                    <th>Resource Type</th>
+                    <th>Issue Type</th>
+                    <th>Description</th>
+                    <th>Est. Savings</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for finding in findings %}
+                {% set sev_str = (finding.severity.value if finding.severity.value is defined else finding.severity)|upper %}
+                <tr>
+                    <td>
+                        {% if sev_str == 'CRITICAL' or sev_str == 'HIGH' %}
+                            <span class="badge badge-danger"><span class="badge-dot"></span>{{ sev_str }}</span>
+                        {% elif sev_str == 'MEDIUM' %}
+                            <span class="badge badge-warning"><span class="badge-dot"></span>{{ sev_str }}</span>
+                        {% else %}
+                            <span class="badge badge-info">{{ sev_str }}</span>
+                        {% endif %}
+                    </td>
+                    <td><strong style="font-family: monospace; color: var(--text-heading);">{{ finding.resource_id }}</strong></td>
+                    <td><span class="badge badge-secondary">{{ finding.resource_type }}</span></td>
+                    <td><code>{{ finding.issue_type }}</code></td>
+                    <td>
+                        <div style="max-width: 420px; line-height: 1.4;">
+                            {{ finding.description }}
+                            {% if finding.recommendation %}
+                                <div style="margin-top: 4px; font-size: 0.78rem; color: var(--accent-cyan);">
+                                    💡 <strong>Rec:</strong> {{ finding.recommendation }}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </td>
+                    <td>
+                        {% if finding.estimated_monthly_savings is defined and finding.estimated_monthly_savings is not none and finding.estimated_monthly_savings > 0 %}
+                            <strong style="color: var(--accent-emerald);">${{ "%.2f"|format(finding.estimated_monthly_savings) }}/mo</strong>
+                        {% else %}
+                            <span class="text-muted">N/A</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" class="text-muted" style="text-align: center; padding: 2.5rem;">
+                        No optimization findings match the selected criteria.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
